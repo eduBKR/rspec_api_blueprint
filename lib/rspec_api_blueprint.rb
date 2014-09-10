@@ -1,9 +1,11 @@
 require "rspec_api_blueprint/version"
 require "rspec_api_blueprint/string_extensions"
-
+require "rspec_api_blueprint/helpers"
 
 RSpec.configure do |config|
-  config.before(:suite) do
+  config.include RSpecApiBlueprint::Helpers, type: :request
+
+  config.before(:suite) do |example|
     if defined? Rails
       api_docs_folder_path = File.join(Rails.root, '/api_docs/')
     else
@@ -17,7 +19,7 @@ RSpec.configure do |config|
     end
   end
 
-  config.after(:each, type: :request) do
+  config.after(:each, type: :request) do |example|
     response ||= last_response
     request ||= last_request
 
@@ -27,7 +29,11 @@ RSpec.configure do |config|
 
       while example_group
         example_groups << example_group
-        example_group = example_group[:example_group]
+        example_group = if RSpec::Core::Version::STRING.starts_with?("3")
+                          example_group[:parent_example_group]
+                        else
+                          example_group[:example_group]
+                        end
       end
 
       action = example_groups[-2][:description_args].first if example_groups[-2]
@@ -49,7 +55,7 @@ RSpec.configure do |config|
         authorization_header = request.env ? request.env['Authorization'] : request.headers['Authorization']
 
         if request_body.present? || authorization_header.present?
-          f.write "+ Request #{request.content_type}\n\n"
+          f.write "+ Request (#{request.content_type})\n\n"
 
           # Request Headers
           if authorization_header.present?
@@ -65,9 +71,9 @@ RSpec.configure do |config|
         end
 
         # Response
-        f.write "+ Response #{response.status} #{response.content_type}\n\n"
+        f.write "+ Response #{response.status} (#{response.content_type})\n\n"
 
-        if response.body.present? && response.content_type =~ /application\/json/
+        if response.body.present? && response.content_type.to_s =~ /application\/json/
           f.write "#{JSON.pretty_generate(JSON.parse(response.body))}\n\n".indent(8)
         end
       end unless response.status == 401 || response.status == 403 || response.status == 301
