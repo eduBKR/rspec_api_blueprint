@@ -4,11 +4,10 @@ require "rspec_api_blueprint/string_extensions"
 
 RSpec.configure do |config|
   config.before(:suite) do
-    if defined? Rails
-      api_docs_folder_path = File.join(Rails.root, '/api_docs/')
-    else
-      api_docs_folder_path = File.join(File.expand_path('.'), '/api_docs/')
-    end
+    root_path = Rails.root if defined? Rails
+    root_path ||= File.expand_path('.')
+
+    api_docs_folder_path = File.join(root_path, '/api_docs/')
 
     Dir.mkdir(api_docs_folder_path) unless Dir.exists?(api_docs_folder_path)
 
@@ -34,11 +33,10 @@ RSpec.configure do |config|
       example_groups[-1][:description_args].first.match(/(\w+)\sRequests/)
       file_name = $1.underscore
 
-      if defined? Rails
-        file = File.join(Rails.root, "/api_docs/#{file_name}.txt")
-      else
-        file = File.join(File.expand_path('.'), "/api_docs/#{file_name}.txt")
-      end
+      root_path = Rails.root if defined? Rails
+      root_path ||= File.expand_path('.')
+
+      file = File.join(root_path, "/api_docs/#{file_name}.txt")
 
       File.open(file, 'a') do |f|
         # Resource & Action
